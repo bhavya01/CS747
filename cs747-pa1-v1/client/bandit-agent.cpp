@@ -111,14 +111,15 @@ bool setRunParameters(int argc, char *argv[], int &numArms, int &randomSeed, uns
 /* ============================================================================= */
 /* Write your algorithms here */
 int sampleArm(string algorithm, double epsilon, int pulls, float reward, int numArms, EmpBandit* bandit, gsl_rng* r){
+  int arm = -1;
   if(algorithm.compare("rr") == 0){
     return(pulls % numArms);
   }
   else if(algorithm.compare("epsilon-greedy") == 0){
-    int arm = -1;
+    
     if(gsl_rng_uniform(r) > epsilon){
       //exploit
-      arm = bandit->getMaxArm();
+      arm = bandit->getMaxArm(algorithm,pulls);
     }
     else{
       //explore
@@ -127,7 +128,11 @@ int sampleArm(string algorithm, double epsilon, int pulls, float reward, int num
     return arm;
   }
   else if(algorithm.compare("UCB") == 0){
-    return(pulls % numArms);
+  	if(pulls < numArms){
+  		return (pulls%numArms);
+  	}
+    arm = bandit->getMaxArm(algorithm,pulls);
+    return arm;
   }
   else if(algorithm.compare("KL-UCB") == 0){
     return(pulls % numArms);
@@ -135,9 +140,7 @@ int sampleArm(string algorithm, double epsilon, int pulls, float reward, int num
   else if(algorithm.compare("Thompson-Sampling") == 0){
     return(pulls % numArms);
   }
-  else{
-    return -1;
-  }
+  return -1;
 }
 
 /* ============================================================================= */

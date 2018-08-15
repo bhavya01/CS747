@@ -15,7 +15,7 @@ hostname="localhost"
 # 5. rr
 
 
-algorithm="epsilon-greedy"
+algorithm="UCB"
 horizon=1000
 epsilon=0.25
 numArms=5

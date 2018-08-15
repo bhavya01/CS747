@@ -1,5 +1,7 @@
 #include <iostream>
 #include <vector>
+#include <string>
+#include <math.h>
 using namespace std;
 
 class EmpBandit{
@@ -10,5 +12,5 @@ private:
 public:
 	EmpBandit(const int &numArms);
 	void update(const int &arm,const double &reward);
-	int getMaxArm();
+	int getMaxArm(string algorithm, int pulls);
 };	
