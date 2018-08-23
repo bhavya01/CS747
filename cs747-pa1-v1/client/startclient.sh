@@ -8,9 +8,8 @@ port=$4
 randomSeed=$5
 algorithm=$6
 epsilon=$7
-
 #echo "Inside Client"
 
 cmd="./bandit-agent --numArms $numArms --randomSeed $randomSeed --horizon $horizon --hostname $hostname --port $port --algorithm $algorithm --epsilon $epsilon"
 #echo $cmd
-$cmd
+$cmd &

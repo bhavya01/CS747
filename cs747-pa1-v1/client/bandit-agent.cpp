@@ -51,35 +51,35 @@ bool setRunParameters(int argc, char *argv[], int &numArms, int &randomSeed, uns
     }
     else if(string(argv[ctr]) == "--numArms"){
       if(ctr == (argc - 1)){
-	return false;
+    return false;
       }
       numArms = atoi(string(argv[ctr + 1]).c_str());
       ctr++;
     }
     else if(string(argv[ctr]) == "--randomSeed"){
       if(ctr == (argc - 1)){
-	return false;
+    return false;
       }
       randomSeed = atoi(string(argv[ctr + 1]).c_str());
       ctr++;
     }
     else if(string(argv[ctr]) == "--horizon"){
       if(ctr == (argc - 1)){
-	return false;
+    return false;
       }
       horizon = atoi(string(argv[ctr + 1]).c_str());
       ctr++;
     }
     else if(string(argv[ctr]) == "--hostname"){
       if(ctr == (argc - 1)){
-	return false;
+    return false;
       }
       hostname = string(argv[ctr + 1]);
       ctr++;
     }
     else if(string(argv[ctr]) == "--port"){
       if(ctr == (argc - 1)){
-	return false;
+    return false;
       }
       port = atoi(string(argv[ctr + 1]).c_str());
       ctr++;
@@ -128,17 +128,22 @@ int sampleArm(string algorithm, double epsilon, int pulls, float reward, int num
     return arm;
   }
   else if(algorithm.compare("UCB") == 0){
-  	if(pulls < numArms){
-  		return (pulls%numArms);
-  	}
+    if(pulls < numArms){
+        return (pulls%numArms);
+    }
     arm = bandit->getMaxArm(algorithm,pulls);
     return arm;
   }
   else if(algorithm.compare("KL-UCB") == 0){
-    return(pulls % numArms);
+    if(pulls < numArms){
+        return (pulls%numArms);
+    }
+    arm = bandit->getMaxArm(algorithm,pulls);
+    return arm;
   }
   else if(algorithm.compare("Thompson-Sampling") == 0){
-    return(pulls % numArms);
+    arm = bandit->getMaxArm(algorithm,pulls);
+    return arm;
   }
   return -1;
 }
@@ -168,7 +173,6 @@ int main(int argc, char *argv[]){
   int socketHandle;
 
   bzero(&remoteSocketInfo, sizeof(sockaddr_in));
-  
   if((hPtr = gethostbyname((char*)(hostname.c_str()))) == NULL){
     cerr << "System DNS name resolution not configured properly." << "\n";
     cerr << "Error number: " << ECONNREFUSED << "\n";
@@ -191,7 +195,6 @@ int main(int argc, char *argv[]){
     exit(EXIT_FAILURE);
   }
 
-
   char sendBuf[256];
   char recvBuf[256];
 
@@ -201,33 +204,55 @@ int main(int argc, char *argv[]){
   gsl_rng* r = gsl_rng_alloc(gsl_rng_mt19937);
   gsl_rng_set(r, randomSeed);
 
-  EmpBandit* bandit = new EmpBandit(numArms);
+  EmpBandit* bandit = new EmpBandit(numArms,randomSeed);
+  // cout<<"Num of  pulls "<<pulls<<".\n";
 
   int armToPull = sampleArm(algorithm, epsilon, pulls, reward, numArms, bandit, r);
   
   sprintf(sendBuf, "%d", armToPull);
 
-  cout << "Sending action " << armToPull << ".\n";
+  // cout << "Sending action " << armToPull << ".\n";
+
+  vector<double> exp_reward;
+  double cum_reward = 0.0;
+
   while(send(socketHandle, sendBuf, strlen(sendBuf)+1, MSG_NOSIGNAL) >= 0){
 
     char temp;
     recv(socketHandle, recvBuf, 256, 0);
     sscanf(recvBuf, "%f %c %lu", &reward, &temp, &pulls);
+    if(algorithm.compare("Thompson-Sampling") == 0){
+        //This is for Non- Bernoulli Distributions
+         if(gsl_rng_uniform(r) < reward){
+            reward = 1.0;
+        }
+        else {
+            reward = 0;
+        }
+    }
     bandit->update(armToPull,reward); 
+    // cout << "Received reward " << reward << ".\n";
+    // cout<<"Num of  pulls "<<pulls<<".\n";
 
-    cout << "Received reward " << reward << ".\n";
-    cout<<"Num of  pulls "<<pulls<<".\n";
-
-
+    exp_reward.push_back(cum_reward);
+    cum_reward += reward;
     armToPull = sampleArm(algorithm, epsilon, pulls, reward, numArms, bandit, r);
 
     sprintf(sendBuf, "%d", armToPull);
-    cout << "Sending action " << armToPull << ".\n";
+    // cout << "Sending action " << armToPull << ".\n";
   }
+
+  exp_reward.push_back(cum_reward);
   
   close(socketHandle);
 
-  cout << "Terminating.\n";
+  for(size_t i=0;i<exp_reward.size();i++){
+    cout << exp_reward[i] ;
+    if(i != exp_reward.size()-1){
+        cout << ", ";
+    }
+  }
+  // cout << "Terminating.\n";
   gsl_rng_free(r);
   return 0;
 }
