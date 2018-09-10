@@ -61,7 +61,7 @@ else:
 
 if algorithm == 'lp':
 	prob = LpProblem("MDP", LpMinimize)
-	state_vals = LpVariable.dicts("Value",range(states),-10000)
+	state_vals = LpVariable.dicts("Value",range(states))
 
 	prob += lpSum([state_vals[i] for i in range(states)])
 	for s in range(states):
@@ -78,7 +78,7 @@ if algorithm == 'lp':
 			for s1 in range(states):
 				v += transitions[s][a][s1]*(rewards[s][a][s1] + discount*state_vals[s1].value())
 			if(abs(v - state_vals[s].value()) < 1e-6):
-				print(state_vals[s].value(),a)
+				print(str(state_vals[s].value()) + "\t"+str(a))
 				break
 
 elif algorithm == 'hpi':
@@ -88,11 +88,10 @@ elif algorithm == 'hpi':
 		change = 0
 		#Find the value function given the actions
 		prob= LpProblem("MDP")
-		state_vals = LpVariable.dicts("Value", range(states),-10000)
+		state_vals = LpVariable.dicts("Value", range(states))
 		for s in range(states):
 			prob += state_vals[s] == lpSum([transitions[s][policy[s]][s1]*(rewards[s][policy[s]][s1] + discount*state_vals[s1]) for s1 in range(states)])
 		prob.solve()
-
 		#If an improving action is found change the policy
 		for s in range(states):
 			for a in range(actions):
@@ -106,10 +105,26 @@ elif algorithm == 'hpi':
 
 	#Given the optimal policy, find the optimal value function
 	prob= LpProblem("MDP")
-	state_vals = LpVariable.dicts("Value", range(states), -10000)
+	state_vals = LpVariable.dicts("Value", range(states))
 	for s in range(states):
 		prob += state_vals[s] == lpSum([transitions[s][policy[s]][s1]*(rewards[s][policy[s]][s1] + discount*state_vals[s1]) for s1 in range(states)])
 	prob.solve()
 
 	for s in range(states):
-		print(state_vals[s].value(), policy[s])
+		print(str(state_vals[s].value()) + "\t" + str(policy[s]))
+
+	with open("./results.csv", "a") as myfile:
+		for s in range(states):
+			if s == states -1:
+				myfile.write(str(state_vals[s].value()))
+			else :
+				myfile.write(str(state_vals[s].value()) + ",")
+		myfile.write("\n")
+
+	with open("./actions.csv", "a") as myfile:
+		for s in range(states):
+			if s == states -1:
+				myfile.write(str(policy[s]))
+			else :
+				myfile.write(str(policy[s]) + ",")
+		myfile.write("\n")
