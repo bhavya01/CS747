@@ -4,7 +4,7 @@ MDP Planning using LP and Howard's Policy Iterations
 
 Author: Bhavya Bahl 2018
 """
-
+# For the episodic MDPSs it is assumed that the last state in the terminal state
 import sys
 from pulp import *
 
@@ -65,6 +65,9 @@ if algorithm == 'lp':
 
 	prob += lpSum([state_vals[i] for i in range(states)])
 	for s in range(states):
+		if cont == 0:
+			if s == states -1:
+				prob += state_vals[s] == 0.0
 		for a in range(actions):
 			prob += state_vals[s] >= lpSum( [transitions[s][a][s1]*(rewards[s][a][s1] + discount*state_vals[s1] ) for s1 in range(states)])
 
@@ -89,16 +92,23 @@ elif algorithm == 'hpi':
 		#Find the value function given the actions
 		prob= LpProblem("MDP")
 		state_vals = LpVariable.dicts("Value", range(states))
+
 		for s in range(states):
-			prob += state_vals[s] == lpSum([transitions[s][policy[s]][s1]*(rewards[s][policy[s]][s1] + discount*state_vals[s1]) for s1 in range(states)])
+			if cont == 0 and s == states -1:
+				prob += state_vals[states-1] == 0.0
+			else:
+				prob += state_vals[s] == lpSum([transitions[s][policy[s]][s1]*(rewards[s][policy[s]][s1] + discount*state_vals[s1]) for s1 in range(states)])
+
 		prob.solve()
 		#If an improving action is found change the policy
 		for s in range(states):
+			if cont == 0 and s == states-1 :
+				continue
 			for a in range(actions):
 				v = 0
 				for s1 in range(states):
 					v += transitions[s][a][s1]*(rewards[s][a][s1] + discount*state_vals[s1].value())
-				if(v > state_vals[s].value() + 1e-7):
+				if(v > state_vals[s].value() + 1e-6):
 					policy[s] = a
 					change = 1
 					break
@@ -107,7 +117,11 @@ elif algorithm == 'hpi':
 	prob= LpProblem("MDP")
 	state_vals = LpVariable.dicts("Value", range(states))
 	for s in range(states):
-		prob += state_vals[s] == lpSum([transitions[s][policy[s]][s1]*(rewards[s][policy[s]][s1] + discount*state_vals[s1]) for s1 in range(states)])
+		if cont == 0 and s == states -1:
+			prob += state_vals[states-1] == 0.0
+		else:
+			prob += state_vals[s] == lpSum([transitions[s][policy[s]][s1]*(rewards[s][policy[s]][s1] + discount*state_vals[s1]) for s1 in range(states)])
+
 	prob.solve()
 
 	for s in range(states):
